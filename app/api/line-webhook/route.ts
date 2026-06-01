@@ -35,6 +35,9 @@ export async function POST(req: NextRequest) {
   for (const event of events) {
     if (event.type !== "message" || event.message?.type !== "text") continue;
 
+    // ตอบเฉพาะแชทส่วนตัว (1:1) ไม่ตอบในกลุ่มหรือห้องแชท
+    if (event.source?.type !== "user") continue;
+
     const userMessage: string = event.message.text;
     const replyToken: string = event.replyToken;
 
