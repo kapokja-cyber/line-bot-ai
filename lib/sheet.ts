@@ -30,14 +30,14 @@ export async function fetchFAQ(): Promise<string> {
 }
 
 function csvToFaqText(csv: string): string {
-  const lines = csv.split("\n").slice(1); // skip header
+  const lines = csv.split("\n").slice(1); // skip header (row 1: หมวด,คำถาม,คำตอบ,...)
   return lines
     .filter((line) => line.trim())
     .map((line) => {
       const cols = parseCSVLine(line);
-      // รองรับทั้ง 2 คอลัมน์ (question,answer) และ 3+ คอลัมน์ (question,answer,keywords,...)
-      const question = cols[0] || "";
-      const answer = cols[1] || "";
+      // Sheet format: A=หมวด, B=คำถาม, C=คำตอบ, D=keyword, E=Tag
+      const question = cols[1] || ""; // col B
+      const answer = cols[2] || "";   // col C
       if (!question || !answer) return null;
       return `Q: ${question}\nA: ${answer}`;
     })
