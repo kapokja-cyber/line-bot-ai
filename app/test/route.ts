@@ -45,16 +45,21 @@ export async function POST(req: NextRequest) {
   }
   if (shouldHandoff(question)) return NextResponse.json({ reply: "ขอแอดมินติดต่อกลับนะคะ 🙏", note: "เข้าเงื่อนไขส่งต่อ — การทดสอบนี้ไม่ได้แจ้งเจ้าหน้าที่จริง", elapsedMs: Date.now() - started }, { headers });
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let stage: "sheet" | "ai" = "sheet";
   try {
     const res = await fetch(source, { cache: "no-store", signal: AbortSignal.timeout(5000) });
     if (!res.ok) throw new Error("sheet");
     const faq = csvToFaqText(await res.text());
+    stage = "ai";
     const reply = await Promise.race([
       generateReply(question.trim(), faq),
       new Promise<string>((_, reject) => { timer = setTimeout(() => reject(new Error("timeout")), 8000); }),
     ]);
     return NextResponse.json({ reply, note: reply === DEFAULT_REPLY ? "คำตอบสำรอง — ต้องตรวจสาเหตุก่อนถือว่าผ่าน" : "คำตอบจาก AI · FAQ Auto V2", elapsedMs: Date.now() - started }, { headers });
-  } catch {
-    return NextResponse.json({ error: "ยังไม่ได้คำตอบจาก AI หรืออ่านชีทไม่สำเร็จ กรุณาลองใหม่ (ยังไม่ถือว่าทดสอบผ่าน)" }, { status: 502, headers });
+  } catch (error) {
+    const timeout = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError" || error.message === "timeout");
+    console.error(JSON.stringify({ event: "test.failed", stage, timeout, elapsedMs: Date.now() - started }));
+    const detail = stage === "sheet" ? "อ่านข้อมูล FAQ จากชีทไม่สำเร็จ" : timeout ? "AI ใช้เวลาตอบเกินกำหนด" : "AI สร้างคำตอบไม่สำเร็จ";
+    return NextResponse.json({ error: detail + " กรุณาลองใหม่ (ยังไม่ถือว่าทดสอบผ่าน)" }, { status: 502, headers });
   } finally { if (timer) clearTimeout(timer); }
 }
