@@ -6,6 +6,8 @@ const MODEL = "gemini-2.5-flash";
 export const DEFAULT_REPLY =
   "ขออภัยค่ะ น้องณดียังไม่มีข้อมูล รอหมอนุ่นมาตอบเพิ่มเติมนะคะ";
 
+export const DELIVERY_REPLY = "หากต้องการให้จัดส่งยา รบกวนแจ้งชื่อ–นามสกุลผู้ป่วย อายุ น้ำหนักเด็ก เบอร์โทรศัพท์ที่ติดต่อได้ ชื่อยาที่ต้องการพร้อมจำนวนที่ต้องการสั่ง และที่อยู่จัดส่งในแชทส่วนตัวค่ะ เจ้าหน้าที่จะโทรกลับเพื่อสอบถามรายละเอียดและตรวจสอบรายการยาก่อนดำเนินการ ระยะเวลาจัดส่งประมาณ 3–5 วัน เจ้าหน้าที่จะแจ้งยอดค่ายารวมค่าจัดส่งให้ทราบก่อน จึงค่อยโอนชำระค่ะ ไม่มีบริการเก็บเงินปลายทางค่ะ";
+
 // A missing FAQ entry is not evidence that a service is unavailable.
 // Require literal source support for categorical negative availability claims.
 export function guardAvailability(reply: string, faqText: string): string {
@@ -16,6 +18,11 @@ export function guardAvailability(reply: string, faqText: string): string {
     if (!evidence.includes(factualPart)) {
       return DEFAULT_REPLY;
     }
+  }
+  // Preserve every owner-approved term when the model gives order instructions.
+  // Do not intercept clinical or emergency answers merely mentioning medicine.
+  if (/จัดส่ง|ส่งยา/.test(reply) && /ชื่อ/.test(reply) && /เบอร์โทร/.test(reply) && /ค่ายา|ค่าส่ง|ค่าจัดส่ง|เก็บเงินปลายทาง/.test(reply) && !/ฉุกเฉิน|หายใจลำบาก|หมดสติ|ชัก/.test(reply)) {
+    return DELIVERY_REPLY;
   }
   return reply;
 }
@@ -83,7 +90,7 @@ ${faqText}
 ID: CLINIC-DELIVERY-2026-09-27
 Category: สั่งยากลับบ้านและจัดส่งยา
 Q: ต้องการสั่งยากลับบ้านหรือให้จัดส่งยา ต้องทำอย่างไร
-A: หากต้องการให้จัดส่งยา รบกวนแจ้งชื่อ–นามสกุลผู้ป่วย อายุ น้ำหนักเด็ก เบอร์โทรศัพท์ที่ติดต่อได้ ชื่อยาที่ต้องการพร้อมจำนวนที่ต้องการสั่ง และที่อยู่จัดส่งในแชทส่วนตัวค่ะ เจ้าหน้าที่จะโทรกลับเพื่อสอบถามรายละเอียดและตรวจสอบรายการยาก่อนดำเนินการ ระยะเวลาจัดส่งประมาณ 3–5 วัน เจ้าหน้าที่จะแจ้งยอดค่ายารวมค่าจัดส่งให้ทราบก่อน จึงค่อยโอนชำระค่ะ ไม่มีบริการเก็บเงินปลายทางค่ะ
+A: ${DELIVERY_REPLY}
 Keywords: สั่งยา, ส่งยา, จัดส่งยา, ยากลับบ้าน, ค่าส่ง, เก็บเงินปลายทาง
 Response level: AUTO_WITH_CAVEAT
 </faq>
