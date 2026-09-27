@@ -6,6 +6,20 @@ const MODEL = "gemini-2.5-flash";
 export const DEFAULT_REPLY =
   "ขออภัยค่ะ น้องณดีไม่มีข้อมูล เดี๋ยวหมอนุ่นมาตอบเพิ่มนะคะ";
 
+// A missing FAQ entry is not evidence that a service is unavailable.
+// Require literal source support for categorical negative availability claims.
+export function guardAvailability(reply: string, faqText: string): string {
+  const claims = reply.match(/(?:ไม่มีบริการ|ไม่มีวัคซีน|ไม่มีสินค้า)[^\s,.;!?。]*/g) ?? [];
+  const evidence = `${faqText}\nไม่มีบริการเก็บเงินปลายทาง`;
+  for (const claim of claims) {
+    const factualPart = claim.replace(/(?:นะคะ|นะค่ะ|ค่ะ|ครับ).*$/, "");
+    if (!evidence.includes(factualPart)) {
+      return "น้องณดียังไม่มีข้อมูลยืนยันเกี่ยวกับบริการที่สอบถามค่ะ กรุณาสอบถามคลินิกโดยตรงก่อนเข้ารับบริการนะคะ";
+    }
+  }
+  return reply;
+}
+
 function buildSystemPrompt(faqText: string): string {
   return `<role>
 คุณคือ "น้องณดี" พนักงานตอบแชทของ "คลินิกหมอนุ่น ภูเขียว"
@@ -120,5 +134,5 @@ export async function generateReply(
   const reply = response.text?.trim();
   if (!reply) throw new Error("gemini_empty_response");
 
-  return reply;
+  return guardAvailability(reply, faqText);
 }
