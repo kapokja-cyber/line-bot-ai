@@ -58,8 +58,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ reply, note: reply === DEFAULT_REPLY ? "คำตอบสำรอง — ต้องตรวจสาเหตุก่อนถือว่าผ่าน" : "คำตอบจาก AI · FAQ Auto V2", elapsedMs: Date.now() - started }, { headers });
   } catch (error) {
     const timeout = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError" || error.message === "timeout");
-    console.error(JSON.stringify({ event: "test.failed", stage, timeout, elapsedMs: Date.now() - started }));
-    const detail = stage === "sheet" ? "อ่านข้อมูล FAQ จากชีทไม่สำเร็จ" : timeout ? "AI ใช้เวลาตอบเกินกำหนด" : "AI สร้างคำตอบไม่สำเร็จ";
+    const status = typeof (error as { status?: unknown })?.status === "number" ? (error as { status: number }).status : undefined;
+    console.error(JSON.stringify({ event: "test.failed", stage, timeout, upstreamStatus: status, elapsedMs: Date.now() - started }));
+    const detail = stage === "sheet" ? "อ่านข้อมูล FAQ จากชีทไม่สำเร็จ" : timeout ? "AI ใช้เวลาตอบเกินกำหนด" : status === 429 ? "บริการ AI จำกัดการใช้งาน ต้องตรวจโควตา" : status === 401 || status === 403 ? "บริการ AI ปฏิเสธสิทธิ์การเชื่อมต่อ" : "AI สร้างคำตอบไม่สำเร็จ";
     return NextResponse.json({ error: detail + " กรุณาลองใหม่ (ยังไม่ถือว่าทดสอบผ่าน)" }, { status: 502, headers });
   } finally { if (timer) clearTimeout(timer); }
 }
