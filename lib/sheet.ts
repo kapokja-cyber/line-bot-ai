@@ -29,18 +29,41 @@ export async function fetchFAQ(): Promise<string> {
   }
 }
 
-function csvToFaqText(csv: string): string {
-  const rows = parseCSV(csv).slice(1); // skip header row
-  return rows
+export function csvToFaqText(csv: string): string {
+  const [header, ...rows] = parseCSV(csv);
+  const columns = (header ?? []).map((name) =>
+    name.replace(/^\uFEFF/, "").trim().toLowerCase()
+  );
+  const questionIndex = columns.indexOf("คำถาม");
+  const answerIndex = columns.indexOf("คำตอบ");
+  if (questionIndex < 0 || answerIndex < 0) {
+    throw new Error("faq_missing_question_or_answer_header");
+  }
+
+  const optionalColumns = [
+    ["ID", "id"],
+    ["Category", "หมวด"],
+    ["Keywords", "keyword trigger"],
+    ["Tag", "tag"],
+    ["Response level", "ระดับการตอบ"],
+    ["Video", "วิดีโอประกอบ"],
+  ].map(([label, name]) => ({ label, index: columns.indexOf(name) }));
+
+  const entries = rows
     .map((cols) => {
-      // Sheet format: A=หมวด, B=คำถาม, C=คำตอบ, D=keyword, E=Tag
-      const question = cols[1]?.trim() || "";
-      const answer = cols[2]?.trim() || "";
+      const question = cols[questionIndex]?.trim() || "";
+      const answer = cols[answerIndex]?.trim() || "";
       if (!question || !answer) return null;
-      return `Q: ${question}\nA: ${answer}`;
+      const metadata = optionalColumns.flatMap(({ label, index }) => {
+        const value = index >= 0 ? cols[index]?.trim() : "";
+        return value ? [`${label}: ${value}`] : [];
+      });
+      return [...metadata, `Q: ${question}`, `A: ${answer}`].join("\n");
     })
-    .filter(Boolean)
-    .join("\n\n");
+    .filter(Boolean);
+
+  if (entries.length === 0) throw new Error("faq_no_valid_entries");
+  return entries.join("\n\n");
 }
 
 /**
