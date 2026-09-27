@@ -4,7 +4,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 const MODEL = "gemini-2.5-flash";
 
 export const DEFAULT_REPLY =
-  "ขออภัยค่ะ น้องณดีไม่มีข้อมูล เดี๋ยวหมอนุ่นมาตอบเพิ่มนะคะ";
+  "ขออภัยค่ะ น้องณดียังไม่มีข้อมูล รอหมอนุ่นมาตอบเพิ่มเติมนะคะ";
 
 // A missing FAQ entry is not evidence that a service is unavailable.
 // Require literal source support for categorical negative availability claims.
@@ -14,7 +14,7 @@ export function guardAvailability(reply: string, faqText: string): string {
   for (const claim of claims) {
     const factualPart = claim.replace(/(?:นะคะ|นะค่ะ|ค่ะ|ครับ).*$/, "");
     if (!evidence.includes(factualPart)) {
-      return "น้องณดียังไม่มีข้อมูลยืนยันเกี่ยวกับบริการที่สอบถามค่ะ กรุณาสอบถามคลินิกโดยตรงก่อนเข้ารับบริการนะคะ";
+      return DEFAULT_REPLY;
     }
   }
   return reply;
