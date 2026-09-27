@@ -16,8 +16,14 @@ function enabled() {
 const source = "https://docs.google.com/spreadsheets/d/1W8KnqelYbWFLgmlhxcpeO-Y1tN024TDj01keUWpyXjo/export?format=csv&gid=1125779856";
 const headers = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" };
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   if (!enabled()) return new Response("Not found", { status: 404 });
+  // Match the masked key label in AI Studio without exposing the credential.
+  // This diagnostic inherits the project's authenticated-preview protection.
+  if (req.nextUrl.searchParams.get("connection") === "1") {
+    const key = process.env.GEMINI_API_KEY?.trim();
+    return NextResponse.json({ keyConfigured: Boolean(key), keySuffix: key && key.length > 12 ? key.slice(-4) : null }, { headers });
+  }
   const nonce = randomBytes(18).toString("base64");
   return new Response(`<!doctype html><html lang="th"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ลองคุยกับน้องณดี</title>
 <style nonce="${nonce}">*{box-sizing:border-box}body{font:18px/1.7 system-ui,sans-serif;background:#f5f7f5;color:#213c35;margin:0;padding:24px}main{max-width:760px;margin:30px auto;background:white;padding:32px;border-radius:20px}h1{margin:0;font-size:30px}.note{color:#53675f}textarea{width:100%;font:inherit;padding:14px;border:1px solid #9db1a7;border-radius:10px}button{font:inherit;border:0;background:#21684e;color:white;border-radius:10px;padding:10px 20px;cursor:pointer;margin:8px 4px 8px 0}button:disabled{opacity:.5}article{border-top:1px solid #ddd;margin-top:20px;padding-top:14px;white-space:pre-wrap}small{display:block;color:#65736e}#status{min-height:30px}</style>
