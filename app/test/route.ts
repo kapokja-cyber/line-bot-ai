@@ -57,11 +57,13 @@ export async function POST(req: NextRequest) {
     if (!res.ok) throw new Error("sheet");
     const faq = csvToFaqText(await res.text());
     stage = "ai";
-    const reply = await Promise.race([
+    const result = await Promise.race([
       generateReply(question.trim(), faq),
-      new Promise<string>((_, reject) => { timer = setTimeout(() => reject(new Error("timeout")), 8000); }),
+      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("timeout")), 8000); }),
     ]);
-    return NextResponse.json({ reply, note: reply === DEFAULT_REPLY ? "คำตอบสำรอง — ต้องตรวจสาเหตุก่อนถือว่าผ่าน" : "คำตอบจาก AI · FAQ Auto V2", elapsedMs: Date.now() - started }, { headers });
+    const reply = result.reply;
+    const note = reply === DEFAULT_REPLY ? "คำตอบสำรอง — ต้องตรวจสาเหตุก่อนถือว่าผ่าน" : result.handoff ? "AI ตอบ + ส่งต่อเจ้าหน้าที่ (การทดสอบนี้ไม่ได้แจ้งจริง)" : "คำตอบจาก AI · FAQ Auto V2";
+    return NextResponse.json({ reply, note, elapsedMs: Date.now() - started }, { headers });
   } catch (error) {
     const timeout = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError" || error.message === "timeout");
     const status = typeof (error as { status?: unknown })?.status === "number" ? (error as { status: number }).status : undefined;
