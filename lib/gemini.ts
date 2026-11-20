@@ -42,6 +42,17 @@ export function guardAvailability(reply: string, faqText: string): string {
   return reply;
 }
 
+// The bot may only send links that appear in the owner's FAQ sheet.
+export function guardLinks(reply: string, faqText: string): string {
+  return reply
+    .replace(/https?:\/\/[^\s<>"')\]]+/g, (url) => {
+      const clean = url.replace(/[.,!?;:ๆ]+$/, "");
+      return faqText.includes(clean) ? url : "";
+    })
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
 export interface BotReply {
   reply: string;
   /** true = ต้องให้คนตอบต่อ (ไม่มีข้อมูลใน FAQ · ขอคุยกับคน · ร้องเรียน · อาการฉุกเฉิน) */
@@ -92,6 +103,14 @@ function buildSystemPrompt(faqText: string): string {
 - EMERGENCY_AUTO: ถ้าข้อความระบุอาการฉุกเฉินที่ตรงกับรายการนี้ ให้แจ้งคำแนะนำฉุกเฉินใน A ทันที และตั้ง handoff=true
 - เมื่อ handoff=true ระบบจะแจ้งหมอนุ่น/เจ้าหน้าที่ให้จริง จึงพูดได้ว่า "ส่งเรื่องให้หมอนุ่นแล้ว" และต้องบอกเบอร์ ${CLINIC_PHONE} ไว้ด้วยเผื่อผู้ปกครองรีบ · เมื่อ handoff=false ห้ามพูดว่าแจ้งเจ้าหน้าที่แล้ว
 </faq_usage>
+
+<knowledge_links>
+- รายการหมวด "ความรู้โรค" ใน <faq> คือคลิป/บทความของหมอนุ่น
+- เมื่อผู้ปกครองถามเรื่องโรค หรือเล่าอาการที่ตรงกับรายการเหล่านี้ ให้แนบลิงก์ที่ตรงที่สุด 1 ลิงก์ (มากสุด 2) ไว้ท้าย reply เช่น "ดูคลิปหมอนุ่นเรื่อง RSV ได้ที่ <ลิงก์> ค่ะ"
+- คัดลอก URL จาก <faq> ตรงตัวเท่านั้น ห้ามแต่งหรือดัดแปลง URL
+- ถ้าเป็นอาการป่วยที่ต้องให้หมอประเมิน ยังต้องตั้ง handoff=true ตามกติกาด้านล่าง แต่แนบลิงก์ได้
+- ถ้าเป็นอาการฉุกเฉิน ห้ามแนบลิงก์ ให้บอกไปโรงพยาบาลหรือโทร 1669 อย่างเดียว
+</knowledge_links>
 
 <handoff_rules>
 ตั้ง handoff=true เมื่อ:
@@ -187,7 +206,7 @@ export async function generateReply(userMessage: string, faqText: string): Promi
   }
 
   const result = parseBotReply(response.text);
-  const guarded = guardAvailability(result.reply, faqText);
+  const guarded = guardLinks(guardAvailability(result.reply, faqText), faqText);
   return guarded === DEFAULT_REPLY ? { reply: DEFAULT_REPLY, handoff: true } : { ...result, reply: guarded };
 }
 
