@@ -34,10 +34,20 @@ function csvToFaqText(csv: string): string {
   return rows
     .map((cols) => {
       // Sheet format: A=หมวด, B=คำถาม, C=คำตอบ, D=keyword, E=Tag
+      const category = cols[0]?.trim() || "";
       const question = cols[1]?.trim() || "";
       const answer = cols[2]?.trim() || "";
+      const keywords = cols[3]?.trim() || "";
       if (!question || !answer) return null;
-      return `Q: ${question}\nA: ${answer}`;
+      // ใส่หมวด + keyword ด้วย ให้ Gemini จับคู่คำถามที่พิมพ์ต่างจาก FAQ ได้แม่นขึ้น
+      return [
+        category && `หมวด: ${category}`,
+        `Q: ${question}`,
+        keywords && `คำที่เกี่ยวข้อง: ${keywords}`,
+        `A: ${answer}`,
+      ]
+        .filter(Boolean)
+        .join("\n");
     })
     .filter(Boolean)
     .join("\n\n");
